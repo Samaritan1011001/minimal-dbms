@@ -5,6 +5,8 @@
 
 /* module wide constants */
 #define PAGE_SIZE 4096
+#define MAX_PAGES 100					
+#define ATTRIBUTE_SIZE 15
 
 /* return code definitions */
 typedef int RC;
@@ -21,11 +23,19 @@ typedef int RC;
 #define RC_RM_NO_MORE_TUPLES 203
 #define RC_RM_NO_PRINT_FOR_DATATYPE 204
 #define RC_RM_UNKOWN_DATATYPE 205
+#define RC_UNABLE_TO_REMOVE 206
+#define RC_ERROR_UNABLE_TO_MAKE_PAGE_DIRTY 207
+#define RC_ERROR_UNABLE_TO_UNPIN_PAGE 208
+#define RC_ERROR_UNABLE_FORCING_PAGE 209
 
 #define RC_IM_KEY_NOT_FOUND 300
 #define RC_IM_KEY_ALREADY_EXISTS 301
 #define RC_IM_N_TO_LAGE 302
 #define RC_IM_NO_MORE_ENTRIES 303
+
+// new ones
+#define RC_SCAN_CONDITION_NOT_FOUND 601
+
 
 /* holder for error messages */
 extern char *RC_message;
