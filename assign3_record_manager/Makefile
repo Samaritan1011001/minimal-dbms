@@ -31,4 +31,4 @@ dberror.o: dberror.c dberror.h
 storage_mgr.o: storage_mgr.h storage_mgr.c
 	gcc -c storage_mgr.c
 clean: 
-	rm *.o test_assign3_1
+	rm *.o

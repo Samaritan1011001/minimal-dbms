@@ -258,11 +258,13 @@ RC readLastBlock(SM_FileHandle *fHandle, SM_PageHandle memPage)
 RC writeBlock(int pageNum, SM_FileHandle *fHandle, SM_PageHandle memPage)
 {
 
-	// filePointer = fopen(fHandle->fileName, "r+");
-	getFileHeader(fHandle);
+	filePointer = fopen(fHandle->fileName, "r+");
+	// getFileHeader(fHandle);
 	// printf("total no of pages in write block 0 : %d\n", fHandle->totalNumPages);
 
-	if (pageNum <= fHandle->totalNumPages || pageNum >= 0)
+	// printf("pageNum -> %i\n",pageNum);
+	// printf("fHandle->totalNumPages -> %i\n",fHandle->totalNumPages);
+	if (pageNum <= fHandle->totalNumPages && pageNum >= 0)
 	{
 		int successful = fseek(filePointer, sizeof(struct SM_FileHandle) + (pageNum * PAGE_SIZE), SEEK_SET);
 		// int successful = fseek(filePointer, 0, SEEK_END);
@@ -295,7 +297,47 @@ RC writeBlock(int pageNum, SM_FileHandle *fHandle, SM_PageHandle memPage)
 		{
 			return RC_WRITE_FAILED;
 		}
+	}else{
+		return RC_WRITE_FAILED;
 	}
+	// // Checking if the pageNumber parameter is less than Total number of pages and less than 0, then return respective error code
+	// if (pageNum > fHandle->totalNumPages || pageNum < 0)
+    //     	return RC_WRITE_FAILED;
+	
+	// // Opening file stream in read & write mode. 'r+' mode opens the file for both reading and writing.	
+	// filePointer = fopen(fHandle->fileName, "r+");
+	
+	// // Checking if file was successfully opened.
+	// if(filePointer == NULL)
+	// 	return RC_FILE_NOT_FOUND;
+
+	// int startPosition = pageNum * PAGE_SIZE;
+
+	// if(pageNum == 0) { 
+	// 	//Writing data to non-first page
+	// 	fseek(filePointer, startPosition, SEEK_SET);	
+	// 	int i;
+	// 	for(i = 0; i < PAGE_SIZE; i++) 
+	// 	{
+	// 		// Checking if it is end of file. If yes then append an enpty block.
+	// 		if(feof(filePointer)) // check file is ending in between writing
+	// 			 appendEmptyBlock(fHandle);
+	// 		// Writing a character from memPage to page file			
+	// 		fputc(memPage[i], filePointer);
+	// 	}
+
+	// 	// Setting the current page position to the cursor(pointer) position of the file stream
+	// 	fHandle->curPagePos = ftell(filePointer); 
+
+	// 	// Closing file stream so that all the buffers are flushed.
+	// 	fclose(filePointer);	
+	// } else {	
+	// 	// Writing data to the first page.
+	// 	fHandle->curPagePos = startPosition;
+	// 	fclose(filePointer);
+	// 	writeCurrentBlock(fHandle, memPage);
+	// }
+	// return RC_OK;
 }
 
 RC writeCurrentBlock(SM_FileHandle *fHandle, SM_PageHandle memPage)
