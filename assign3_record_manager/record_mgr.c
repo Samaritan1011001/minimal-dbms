@@ -1393,31 +1393,31 @@ extern RC next (RM_ScanHandle *scan, Record *record)
 		return RC_SCAN_CONDITION_NOT_FOUND;
 	}
 
-	Value *result = (Value *) malloc(sizeof(Value));
+	Value *res = (Value *) malloc(sizeof(Value));
    
 	char *data;
    	
 	// Getting record size of the schema
-	int recordSize = getRecordSize(schema);
+	int rec_size = getRecordSize(schema);
 
 	// Calculating Total number of slots
-	int totalSlots = PAGE_SIZE / recordSize;
+	int tot_slots = PAGE_SIZE / rec_size;
 
 	// Getting Scan Count
-	int scanCount = scan_mgr->scanCount;
+	int no_of_scans = scan_mgr->scanCount;
 
 	// Getting tuples count of the table
-	int tuplesCount = table_mgr->tuplesCount;
+	int tuples_count = table_mgr->tuplesCount;
 
 	// Checking if the table contains tuples. If the tables doesn't have tuple, then return respective message code
-	if (tuplesCount == 0)
+	if (tuples_count == 0)
 		return RC_RM_NO_MORE_TUPLES;
 
 	// Iterate through the tuples
-	while(scanCount <= tuplesCount)
+	while(no_of_scans <= tuples_count)
 	{  
 		// If all the tuples have been scanned, execute this block
-		if (scanCount <= 0)
+		if (no_of_scans <= 0)
 		{
 			// printf("INSIDE If scanCount <= 0 \n");
 			// Set PAGE and SLOT to first position
@@ -1430,7 +1430,7 @@ extern RC next (RM_ScanHandle *scan, Record *record)
 			scan_mgr->recordID.slot++;
 
 			// If all the slots have been scanned execute this block
-			if(scan_mgr->recordID.slot >= totalSlots)
+			if(scan_mgr->recordID.slot >= tot_slots)
 			{
 				scan_mgr->recordID.slot = 0;
 				scan_mgr->recordID.page++;
@@ -1444,7 +1444,7 @@ extern RC next (RM_ScanHandle *scan, Record *record)
 		data = scan_mgr->pageHandle.data;
 
 		// Calulate the data location from record's slot and record size
-		data = data + (scan_mgr->recordID.slot * recordSize);
+		data = data + (scan_mgr->recordID.slot * rec_size);
 		
 		// Set the record's slot and page to scan manager's slot and page
 		record->id.page = scan_mgr->recordID.page;
@@ -1456,17 +1456,17 @@ extern RC next (RM_ScanHandle *scan, Record *record)
 		// '-' is used for Tombstone mechanism.
 		*dataPointer = '-';
 		
-		memcpy(++dataPointer, data + 1, recordSize - 1);
+		memcpy(++dataPointer, data + 1, rec_size - 1);
 
 		// Increment scan count because we have scanned one record
 		scan_mgr->scanCount++;
-		scanCount++;
+		no_of_scans++;
 
 		// Test the record for the specified condition (test expression)
-		evalExpr(record, schema, scan_mgr->condition, &result); 
+		evalExpr(record, schema, scan_mgr->condition, &res); 
 
 		// v.boolV is TRUE if the record satisfies the condition
-		if(result->v.boolV == TRUE)
+		if(res->v.boolV == TRUE)
 		{
 			// Unpin the page i.e. remove it from the buffer pool.
 			unpinPage(&table_mgr->bufferPool, &scan_mgr->pageHandle);
@@ -1490,19 +1490,19 @@ extern RC next (RM_ScanHandle *scan, Record *record)
 // This function closes the scan operation.
 extern RC closeScan (RM_ScanHandle *scan)
 {
-	RM *scanManager = scan->mgmtData;
+	RM *scan_mgr = scan->mgmtData;
 	RM *rec_mgr = scan->rel->mgmtData;
 
 	// Check if scan was incomplete
-	if(scanManager->scanCount > 0)
+	if(scan_mgr->scanCount > 0)
 	{
 		// Unpin the page i.e. remove it from the buffer pool.
-		unpinPage(&rec_mgr->bufferPool, &scanManager->pageHandle);
+		unpinPage(&rec_mgr->bufferPool, &scan_mgr->pageHandle);
 		
 		// Reset the Scan Manager's values
-		scanManager->scanCount = 0;
-		scanManager->recordID.page = 1;
-		scanManager->recordID.slot = 0;
+		scan_mgr->scanCount = 0;
+		scan_mgr->recordID.page = 1;
+		scan_mgr->recordID.slot = 0;
 	}
 	
 	// De-allocate all the memory space allocated to the scans's meta data (our custom structure)
@@ -1583,19 +1583,19 @@ extern RC freeSchema (Schema *schema)
 extern RC createRecord (Record **record, Schema *schema)
 {
 	// Allocate some memory space for the new record
-	Record *newRecord = (Record*) malloc(sizeof(Record));
+	Record *rec_new = (Record*) malloc(sizeof(Record));
 	
 	// Retrieve the record size
 	int recordSize = getRecordSize(schema);
 
 	// Allocate some memory space for the data of new record    
-	newRecord->data= (char*) malloc(recordSize);
+	rec_new->data= (char*) malloc(recordSize);
 
 	// Setting page and slot position. -1 because this is a new record and we don't know anything about the position
-	newRecord->id.page = newRecord->id.slot = -1;
+	rec_new->id.page = rec_new->id.slot = -1;
 
 	// Getting the starting position in memory of the record's data
-	char *dataPointer = newRecord->data;
+	char *dataPointer = rec_new->data;
 	
 	// '-' is used for Tombstone mechanism. We set it to '-' because the record is empty.
 	*dataPointer = '-';
@@ -1604,7 +1604,7 @@ extern RC createRecord (Record **record, Schema *schema)
 	*(++dataPointer) = '\0';
 
 	// Set the newly created record to 'record' which passed as argument
-	*record = newRecord;
+	*record = rec_new;
 
 	return RC_OK;
 }
@@ -1615,8 +1615,9 @@ RC attrOffset (Schema *schema, int attrNum, int *result)
 	int i;
 	*result = 1;
 
+	i = 0;
 	// Iterating through all the attributes in the schema
-	for(i = 0; i < attrNum; i++)
+	while(i < attrNum)
 	{
 		// Switch depending on DATA TYPE of the ATTRIBUTE
 		switch (schema->dataTypes[i])
@@ -1639,6 +1640,7 @@ RC attrOffset (Schema *schema, int attrNum, int *result)
 				*result = *result + sizeof(bool);
 				break;
 		}
+		i++;
 	}
 	return RC_OK;
 }
@@ -1660,7 +1662,7 @@ extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 	attrOffset(schema, attrNum, &offset);
 
 	// Allocating memory space for the Value data structure where the attribute values will be stored
-	Value *attribute = (Value*) malloc(sizeof(Value));
+	Value *attr = (Value*) malloc(sizeof(Value));
 
 	// Getting the starting position of record's data in memory
 	char *dataPointer = record->data;
@@ -1677,44 +1679,44 @@ extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 		case DT_STRING:
 		{
      			// Getting attribute value from an attribute of type STRING
-			int length = schema->typeLength[attrNum];
-			// Allocate space for string hving size - 'length'
-			attribute->v.stringV = (char *) malloc(length + 1);
+			int len = schema->typeLength[attrNum];
+			// Allocate space for string hving size - 'len'
+			attr->v.stringV = (char *) malloc(len + 1);
 
 			// Copying string to location pointed by dataPointer and appending '\0' which denotes end of string in C
-			strncpy(attribute->v.stringV, dataPointer, length);
-			attribute->v.stringV[length] = '\0';
-			attribute->dt = DT_STRING;
+			strncpy(attr->v.stringV, dataPointer, len);
+			attr->v.stringV[len] = '\0';
+			attr->dt = DT_STRING;
       			break;
 		}
 
 		case DT_INT:
 		{
 			// Getting attribute value from an attribute of type INTEGER
-			int value = 0;
-			memcpy(&value, dataPointer, sizeof(int));
-			attribute->v.intV = value;
-			attribute->dt = DT_INT;
+			int val = 0;
+			memcpy(&val, dataPointer, sizeof(int));
+			attr->v.intV = val;
+			attr->dt = DT_INT;
       			break;
 		}
     
 		case DT_FLOAT:
 		{
-			// Getting attribute value from an attribute of type FLOAT
-	  		float value;
-	  		memcpy(&value, dataPointer, sizeof(float));
-	  		attribute->v.floatV = value;
-			attribute->dt = DT_FLOAT;
+			// Getting attribute val from an attribute of type FLOAT
+	  		float val;
+	  		memcpy(&val, dataPointer, sizeof(float));
+	  		attr->v.floatV = val;
+			attr->dt = DT_FLOAT;
 			break;
 		}
 
 		case DT_BOOL:
 		{
-			// Getting attribute value from an attribute of type BOOLEAN
-			bool value;
-			memcpy(&value,dataPointer, sizeof(bool));
-			attribute->v.boolV = value;
-			attribute->dt = DT_BOOL;
+			// Getting attribute val from an attribute of type BOOLEAN
+			bool val;
+			memcpy(&val,dataPointer, sizeof(bool));
+			attr->v.boolV = val;
+			attr->dt = DT_BOOL;
       			break;
 		}
 
@@ -1723,7 +1725,7 @@ extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 			break;
 	}
 
-	*value = attribute;
+	*value = attr;
 	return RC_OK;
 }
 
@@ -1736,10 +1738,10 @@ extern RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
 	attrOffset(schema, attrNum, &offset);
 
 	// Getting the starting position of record's data in memory
-	char *dataPointer = record->data;
+	char *dataPtr = record->data;
 	
 	// Adding offset to the starting position
-	dataPointer = dataPointer + offset;
+	dataPtr = dataPtr + offset;
 		
 	switch(schema->dataTypes[attrNum])
 	{
@@ -1749,33 +1751,33 @@ extern RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
 			// Getting the legeth of the string as defined while creating the schema
 			int length = schema->typeLength[attrNum];
 
-			// Copying attribute's value to the location pointed by record's data (dataPointer)
-			strncpy(dataPointer, value->v.stringV, length);
-			dataPointer = dataPointer + schema->typeLength[attrNum];
+			// Copying attribute's value to the location pointed by record's data (dataPtr)
+			strncpy(dataPtr, value->v.stringV, length);
+			dataPtr = dataPtr + schema->typeLength[attrNum];
 		  	break;
 		}
 
 		case DT_INT:
 		{
 			// Setting attribute value of an attribute of type INTEGER
-			*(int *) dataPointer = value->v.intV;	  
-			dataPointer = dataPointer + sizeof(int);
+			*(int *) dataPtr = value->v.intV;	  
+			dataPtr = dataPtr + sizeof(int);
 		  	break;
 		}
 		
 		case DT_FLOAT:
 		{
 			// Setting attribute value of an attribute of type FLOAT
-			*(float *) dataPointer = value->v.floatV;
-			dataPointer = dataPointer + sizeof(float);
+			*(float *) dataPtr = value->v.floatV;
+			dataPtr = dataPtr + sizeof(float);
 			break;
 		}
 		
 		case DT_BOOL:
 		{
 			// Setting attribute value of an attribute of type STRING
-			*(bool *) dataPointer = value->v.boolV;
-			dataPointer = dataPointer + sizeof(bool);
+			*(bool *) dataPtr = value->v.boolV;
+			dataPtr = dataPtr + sizeof(bool);
 			break;
 		}
 
