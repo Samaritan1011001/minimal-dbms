@@ -77,7 +77,7 @@ main (void)
 {
   testName = "";
 
-//   testInsertManyRecords();
+  // testInsertManyRecords();
   testRecords();
   testCreateTableAndInsert();
   testUpdateTable();
@@ -151,9 +151,12 @@ testCreateTableAndInsert (void)
   rids = (RID *) malloc(sizeof(RID) * numInserts);
   
   TEST_CHECK(initRecordManager(NULL));
-  TEST_CHECK(createTable("test_table_r",schema));
-  TEST_CHECK(openTable(table, "test_table_r"));
   
+  TEST_CHECK(createTable("test_table_r",schema));
+
+  TEST_CHECK(openTable(table, "test_table_r"));
+  printf("\nWorked  here \n");
+
   // insert rows into table
   for(i = 0; i < numInserts; i++)
     {
@@ -163,7 +166,9 @@ testCreateTableAndInsert (void)
     }
 
   TEST_CHECK(closeTable(table));
+  printf("\nWorks till here \n");
   TEST_CHECK(openTable(table, "test_table_r"));
+    
 
   // randomly retrieve records from the table and compare to inserted ones
   for(i = 0; i < 1000; i++)

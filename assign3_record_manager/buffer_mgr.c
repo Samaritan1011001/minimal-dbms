@@ -65,8 +65,6 @@ void FIFO(BM_BufferPool *const bm, pg_frame *page)
 			front_id = front_id+1;
 			if(front_id % buffer_pool_size == 0)
 				front_id = 0;
-			else
-				front_id = front_id;
 		}
 		i++;
 	}
@@ -74,7 +72,7 @@ void FIFO(BM_BufferPool *const bm, pg_frame *page)
 
 
 //LRU strategy page replacement strategy
-RC LRU(BM_BufferPool *const bm,pg_frame *Page)
+extern void LRU(BM_BufferPool *const bm,pg_frame *Page)
 {
     int i=0;
 	pg_frame *frame = (pg_frame*)bm->mgmtData;
@@ -84,12 +82,7 @@ RC LRU(BM_BufferPool *const bm,pg_frame *Page)
     while(i < buffer_pool_size)
 	{   
         //If fix_count is not 0, that indicates the page frame is being used by some client and we cant replace it
-		if(frame[i].fix_count != 0)
-		{
-			continue;
-		}
-        //Else fix_count is 0 and we can replace the page
-        else
+		if(frame[i].fix_count == 0)
         {   //initialize the index and least_no_of_hits for least recently used page
             LRU_ind = i;
 		    least_no_of_hits = frame[i].no_of_hits;
@@ -113,12 +106,12 @@ RC LRU(BM_BufferPool *const bm,pg_frame *Page)
 	//Check if page is dirty (modified)
     if(frame[LRU_ind].Dirty_bit == 1)
 	{
-		SM_FileHandle *fHandle;
+		SM_FileHandle *fHandle = NULL;
 		//Opening the page file 
         openPageFile(bm->pageFile, fHandle);
 
         //Writing the data to disk
-        RC a = writeBlock(frame[LRU_ind].pageNum, fHandle, frame[LRU_ind].data);
+        writeBlock(frame[LRU_ind].pageNum, fHandle, frame[LRU_ind].data);
 		//As the page file has been written successfully, it is no longer dirty.
         frame[i].Dirty_bit = 0;
 		WC = WC + 1;
@@ -138,7 +131,6 @@ RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
                   const int numPages, ReplacementStrategy strategy,
                   void *stratData)
 {
-	struct stat buffer;   
   	if (!fopen(pageFileName, "r")){
 		//   printf("File not exist\n");
 		  return RC_FILE_NOT_FOUND;
@@ -228,7 +220,7 @@ RC forceFlushPool(BM_BufferPool *const bm)
             {
 				// Checking if page is in memory
                 //Opening the page file
-                RC a = openPageFile(bm->pageFile, &fHandle);
+                openPageFile(bm->pageFile, &fHandle);
                 //Writing the data to disk
                 writeBlock(frames[i].pageNum, &fHandle, frames[i].data);
                 //As the page file has been return successfully, it is no longer dirty.
@@ -449,11 +441,11 @@ RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
             //As the page file has been written successfully, it is no longer dirty.
             frame[i].Dirty_bit = 0;
 			WC = WC + 1;
-            return RC_OK;
+            
         }
         i = i+1; 
     }
-    return RC_ERROR_UNABLE_FORCING_PAGE;
+    return RC_OK;
 }
 
 // The getFrameContents function returns an array of PageNumbers (of size numPages) where the ith element is the number of the page stored in the ith page frame
